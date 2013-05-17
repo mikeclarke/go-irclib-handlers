@@ -23,7 +23,7 @@ type DocBot struct {
 	conn     redis.Conn
 }
 
-func (bot *DocBot) Connect() error {
+func (bot *DocBot) connect() error {
 	c, err := redis.Dial("tcp", bot.address)
 	if err != nil {
 		log.Printf("error connecting: %v", err)
@@ -50,8 +50,13 @@ func (bot *DocBot) HandleEvent(event *irc.Event) {
 	client := event.Client
 	buffer := event.Arguments[0]
 
+	// Create redis connection
+	bot.connect()
+	defer bot.conn.Close()
+
 	switch {
 	case lookupRE.MatchString(event.Arguments[1]):
+
 		// Grab lookup value
 		key := lookupRE.FindString(event.Arguments[1])
 		key = key[2:]
