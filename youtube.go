@@ -3,7 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"log"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -12,11 +12,13 @@ import (
 
 var message_RE = regexp.MustCompile(`(?:youtube|yt)(?: me)? (.*)`)
 
-func Youtube(event *irc.Event) {
+func YouTube(event *irc.Event) {
 	matches := message_RE.FindStringSubmatch(event.Raw)
 
 	if len(matches) > 1 {
 		client := event.Client
+		buffer := event.Arguments[0]
+
 		query := matches[1]
 		baseUrl := "http://gdata.youtube.com/feeds/api/videos"
 
@@ -29,12 +31,26 @@ func Youtube(event *irc.Event) {
 		resp, err := http.Get(fmt.Sprintf("%s?%s", baseUrl, params.Encode()))
 
 		if err != nil {
-			client.SendRawf("error hitting youtube: %s", err)
+			client.Privmsg(buffer, fmt.Sprintf("error hitting youtube: %s", err))
 			return
 		}
 
 		// Decode response
+		var data map[string]interface{}
 		decoder := json.NewDecoder(resp.Body)
-		log.Print(decoder)
+		decoder.Decode(&data)
+
+		// Pick a random video
+		feed := data["feed"].(map[string]interface{})
+		videos := feed["entry"].([]interface{})
+		video := videos[rand.Intn(len(videos))].(map[string]interface{})
+		links := video["link"].([]interface{})
+
+		for _, item := range links {
+			link := item.(map[string]interface{})
+			if link["rel"] == "alternate" && link["type"] == "text/html" {
+				client.Privmsg(buffer, link["href"].(string))
+			}
+		}
 	}
 }
