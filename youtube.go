@@ -12,6 +12,20 @@ import (
 
 var message_RE = regexp.MustCompile(`(?:youtube|yt)(?: me)? (.*)`)
 
+type YouTubeLink struct {
+	Rel      string
+	Href     string
+	MimeType string `json:"type"`
+}
+
+type YouTubeFeed struct {
+	Feed struct {
+		Entry []struct {
+			Link []YouTubeLink
+		}
+	}
+}
+
 func YouTube(event *irc.Event) {
 	matches := message_RE.FindStringSubmatch(event.Raw)
 
@@ -39,20 +53,18 @@ func YouTube(event *irc.Event) {
 	}
 
 	// Decode response
-	var data map[string]interface{}
+	var data YouTubeFeed
 	decoder := json.NewDecoder(resp.Body)
 	decoder.Decode(&data)
 
 	// Pick a random video
-	feed := data["feed"].(map[string]interface{})
-	videos := feed["entry"].([]interface{})
-	video := videos[rand.Intn(len(videos))].(map[string]interface{})
-	links := video["link"].([]interface{})
+	videos := data.Feed.Entry
+	video := videos[rand.Intn(len(videos))]
+	links := video.Link
 
-	for _, item := range links {
-		link := item.(map[string]interface{})
-		if link["rel"] == "alternate" && link["type"] == "text/html" {
-			client.Privmsg(buffer, link["href"].(string))
+	for _, link := range links {
+		if link.Rel == "alternate" && link.MimeType == "text/html" {
+			client.Privmsg(buffer, link.Href)
 		}
 	}
 }
