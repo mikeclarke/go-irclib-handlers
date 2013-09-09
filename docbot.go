@@ -67,7 +67,7 @@ func (bot *DocBot) HandleEvent(event *irc.Event) {
 		// Check if no results
 		if len(results) > 0 {
 			for _, url := range results {
-				client.Privmsg(buffer, fmt.Sprintf(":: %s", url))
+				client.Privmsg(buffer, fmt.Sprintf("> %s", url))
 			}
 		} else {
 			client.Privmsg(buffer, "no results found!")
